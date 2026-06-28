@@ -89,6 +89,23 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 
 ---
 
+## Milestone 7: Daily WhatsApp Expense Summary
+
+| # | Task | Description | Acceptance Criteria |
+|---|------|-------------|-------------------|
+| 7.1 | Database helper | Add `get_yesterday_expenses(month_id)` — returns yesterday's expenses for the active month | Returns list of yesterday's expenses with amount, category |
+| 7.2 | Custom Flet template | Create `flet_template/` — copy of Flet's default build template | Template can be used with `--template ./flet_template --template-dir build` |
+| 7.3 | Flutter deps | Add `workmanager`, `share_plus`, `sqflite`, `shared_preferences` to template `pubspec.yaml` | Dependencies included in generated Flutter project |
+| 7.4 | Dart background task | Create `lib/background_task.dart` — WorkManager callback that reads SQLite, formats yesterday's expenses, shares via WhatsApp Intent | Background task code compiles, reads DB, formats message |
+| 7.5 | Register WorkManager | Modify `lib/main.dart` to call `Workmanager().initialize()` and schedule daily periodic task at 8:00 AM | Task is registered and scheduled |
+| 7.6 | Android permissions | Add `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `INTERNET` to `AndroidManifest.xml` | Permissions present in manifest |
+| 7.7 | Settings page | Add Settings toggle (enable/disable WhatsApp summary), Test button ("Send yesterday's now") in Python/Flet UI | Settings UI exists, toggle saves preference |
+| 7.8 | Config bridge | SharedPreferences bridge: Python writes config, Dart reads it | Config flows from Python ↔ Flutter |
+| 7.9 | CI update | Update `build-apk.yml` to use `--template ./flet_template --template-dir build` | Workflow uses custom template |
+| 7.10 | Build & verify | Build APK via CI, install on phone, test daily summary | APK builds, WhatsApp intent fires with correct data |
+
+---
+
 ## Data Flow Summary
 
 ```

@@ -21,7 +21,7 @@ jobs:
       run: pip install flet
 
     - name: Build APK
-      run: flet build apk --project expense_tracker --product "Expense Tracker" --org com.expensetracker --yes
+      run: flet build apk --project expense_tracker --product "Expense Tracker" --org com.expensetracker --template ./flet_template --yes
 
     - name: Upload APK
       uses: actions/upload-artifact@v4

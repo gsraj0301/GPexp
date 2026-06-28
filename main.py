@@ -1,10 +1,12 @@
 import flet as ft
-from datetime import datetime, date
+import urllib.parse
+from datetime import date, datetime, timedelta
 
 from database import (
     init_db, get_active_month, get_all_months, get_month,
     add_expense, get_expenses, get_month_total,
     close_month, create_month,
+    get_setting, set_setting, get_yesterday_expenses,
 )
 
 MONTH_NAMES = [
@@ -330,12 +332,83 @@ def main(page: ft.Page):
         dlg.open = True
         page.update()
 
+    # --- WhatsApp Settings ---
+
+    whatsapp_toggle = ft.Switch(
+        value=get_setting("whatsapp_enabled") == "true",
+        on_change=lambda e: set_setting("whatsapp_enabled", "true" if e.control.value else "false"),
+    )
+
+    def send_test_whatsapp(e):
+        yesterday_date = date.today() - timedelta(days=1)
+        yesterday_str = yesterday_date.isoformat()
+        expenses = get_yesterday_expenses(active_month.id)
+
+        if not expenses:
+            page.snack_bar = ft.SnackBar(
+                ft.Text("No expenses from yesterday to send"),
+                open=True,
+            )
+            page.update()
+            return
+
+        lines = []
+        lines.append(f"📅 Yesterday's Expenses ({yesterday_date.strftime('%b %d, %Y')})")
+        lines.append("")
+        total = 0.0
+        last_cat = None
+        for exp in expenses:
+            if exp.category != last_cat:
+                if last_cat is not None:
+                    lines.append("")
+                lines.append(exp.category)
+                last_cat = exp.category
+            lines.append(f"  • ₹{exp.amount:,.2f}")
+            total += exp.amount
+        lines.append("")
+        lines.append("─────────────")
+        lines.append(f"Total: ₹{total:,.2f}")
+
+        msg = "\n".join(lines)
+        encoded = urllib.parse.quote(msg)
+        page.launch_url(f"whatsapp://send?text={encoded}")
+
+    test_btn = ft.OutlinedButton(
+        content=ft.Row([ft.Icon(ft.Icons.SEND), ft.Text("Send Yesterday's Now")], tight=True),
+        on_click=send_test_whatsapp,
+    )
+
+    settings_view = ft.Column(
+        controls=[
+            ft.Card(
+                content=ft.Container(
+                    content=ft.Column([
+                        ft.Text("WhatsApp Daily Summary", size=17, weight=ft.FontWeight.BOLD),
+                        ft.Text("Every morning at 8:00 AM, send yesterday's expenses", size=13, color=ft.Colors.GREY_600),
+                        ft.Row([
+                            ft.Text("Enable", size=15),
+                            whatsapp_toggle,
+                        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+                        ft.Divider(height=1),
+                        test_btn,
+                    ], spacing=10),
+                    padding=16,
+                )
+            ),
+        ],
+        expand=True,
+        spacing=10,
+        visible=False,
+    )
+
     def show_main_view():
         main_body.visible = True
         history_view.visible = False
+        settings_view.visible = False
         page.appbar.title = ft.Text(get_month_label(active_month.year, active_month.month), size=22, weight=ft.FontWeight.BOLD)
         page.appbar.actions = [
             ft.IconButton(icon=ft.Icons.LIST_ALT, tooltip="History", on_click=open_history),
+            ft.IconButton(icon=ft.Icons.SETTINGS, tooltip="Settings", on_click=open_settings),
         ]
         refresh_expenses()
         page.update()
@@ -344,7 +417,19 @@ def main(page: ft.Page):
         build_history()
         main_body.visible = False
         history_view.visible = True
+        settings_view.visible = False
         page.appbar.title = ft.Text("History", size=22, weight=ft.FontWeight.BOLD)
+        page.appbar.actions = [
+            ft.IconButton(icon=ft.Icons.ARROW_BACK, tooltip="Back", on_click=lambda e: show_main_view()),
+        ]
+        page.update()
+
+    def open_settings(e):
+        whatsapp_toggle.value = get_setting("whatsapp_enabled") == "true"
+        main_body.visible = False
+        history_view.visible = False
+        settings_view.visible = True
+        page.appbar.title = ft.Text("Settings", size=22, weight=ft.FontWeight.BOLD)
         page.appbar.actions = [
             ft.IconButton(icon=ft.Icons.ARROW_BACK, tooltip="Back", on_click=lambda e: show_main_view()),
         ]
@@ -377,11 +462,12 @@ def main(page: ft.Page):
         center_title=False,
         actions=[
             ft.IconButton(icon=ft.Icons.LIST_ALT, tooltip="History", on_click=open_history),
+            ft.IconButton(icon=ft.Icons.SETTINGS, tooltip="Settings", on_click=open_settings),
         ],
     )
 
     body = ft.Stack(
-        controls=[main_body, history_view],
+        controls=[main_body, history_view, settings_view],
         expand=True,
     )
 

@@ -1,10 +1,15 @@
+import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
 
 from models import ExpenseMonth, Expense
 
-DB_PATH = "expenses.db"
+DB_PATH = os.environ.get("FLET_APP_STORAGE_DATA", ".")
+if os.path.isdir(DB_PATH):
+    DB_PATH = os.path.join(DB_PATH, "expenses.db")
+else:
+    DB_PATH = os.path.join(".", "expenses.db")
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -35,6 +40,11 @@ def init_db() -> None:
             note TEXT DEFAULT '',
             date TEXT NOT NULL,
             FOREIGN KEY (month_id) REFERENCES expense_months(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
         );
     """)
     conn.commit()
@@ -180,6 +190,27 @@ def close_month(month_id: int) -> None:
     conn.close()
 
 
+# --- Settings ---
+
+
+def get_setting(key: str, default: str = "") -> str:
+    conn = _get_conn()
+    cur = conn.execute("SELECT value FROM settings WHERE key = ?", (key,))
+    row = cur.fetchone()
+    conn.close()
+    return row["value"] if row else default
+
+
+def set_setting(key: str, value: str) -> None:
+    conn = _get_conn()
+    conn.execute(
+        "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
+        (key, value),
+    )
+    conn.commit()
+    conn.close()
+
+
 # --- Expense CRUD ---
 
 
@@ -200,6 +231,18 @@ def get_expenses(month_id: int) -> List[Expense]:
     cur = conn.execute(
         "SELECT * FROM expenses WHERE month_id = ? ORDER BY date DESC, id DESC",
         (month_id,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [_row_to_expense(r) for r in rows]
+
+
+def get_yesterday_expenses(month_id: int) -> List[Expense]:
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    conn = _get_conn()
+    cur = conn.execute(
+        "SELECT * FROM expenses WHERE month_id = ? AND date = ? ORDER BY id",
+        (month_id, yesterday),
     )
     rows = cur.fetchall()
     conn.close()
