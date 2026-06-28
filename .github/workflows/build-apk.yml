@@ -10,28 +10,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-    - name: Set up Python 3.12
+    - name: Setup Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.12'
-
-    - name: Set up Java 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: 'temurin'
-        java-version: '17'
-
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
 
     - name: Install Flet
       run: pip install flet
 
     - name: Build APK
-      run: flet build apk --project expense_tracker --product "Expense Tracker" --org com.expensetracker
+      run: flet build apk --project expense_tracker --product "Expense Tracker" --org com.expensetracker --yes
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
