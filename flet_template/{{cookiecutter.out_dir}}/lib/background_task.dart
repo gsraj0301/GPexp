@@ -92,7 +92,9 @@ Future<void> _sendDailySummary() async {
     buf.writeln("─────────────");
     buf.writeln("Total: ₹${total.toStringAsFixed(2)}");
 
-    await Share.share(buf.toString(), subject: "Daily Expenses");
+    await SharePlus.instance.share(
+      ShareParams(text: buf.toString(), subject: "Daily Expenses"),
+    );
 
     await db.rawInsert(
       "INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)",
