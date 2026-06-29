@@ -29,7 +29,7 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 | 2.1 | Create `main.py` entry point | `main(page)` — initializes DB, gets active month, builds UI | App launches without error |
 | 2.2 | AppBar | Show current month name (e.g., "June 2026") and History icon button | Month name is correct, history button visible |
 | 2.3 | Expense Input — Amount field | Numeric `TextField` with ₹ prefix, keyboard type = number | Only accepts numbers |
-| 2.4 | Expense Input — Category dropdown | `Dropdown` with options: Food, Transport, Materials, Other, Custom | Options visible, one can be selected |
+| 2.4 | Expense Input — Category dropdown | `Dropdown` with options: Tea, Water, Biscuit, Snack, Transport, Cartoon, Petrol, Custom | Options visible, one can be selected |
 | 2.5 | Expense Input — Custom category | `TextField` appears below dropdown only when "Custom" is selected | Field hidden/shown correctly |
 | 2.6 | Expense Input — Date picker | IconButton that opens Flet `DatePicker`, selected date shown | DatePicker opens, date selected |
 | 2.7 | Expense Input — Save button | "✓ Save Expense" button — validates inputs → calls `add_expense()` → refreshes list | Expense saved, list updates, form resets |
@@ -68,7 +68,7 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 
 | # | Task | Description | Acceptance Criteria |
 |---|------|-------------|-------------------|
-| 5.1 | Input validation — Amount | Must be > 0, must be a number | Error snackbar if invalid |
+| 5.1 | Input validation — Amount | Must be > 0, must be a number; None-safe `.value` on mobile | Error snackbar if invalid |
 | 5.2 | Input validation — Category | Must be selected (or custom category entered if "Custom" selected) | Error if missing |
 | 5.3 | Input validation — Date | Must not be in the future (optional strictness) | Warning if future date |
 | 5.4 | Empty state | Show "No expenses yet" message when list is empty | Message visible on fresh month |
@@ -95,14 +95,15 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 |---|------|-------------|-------------------|
 | 7.1 | Database helper | Add `get_yesterday_expenses(month_id)` — returns yesterday's expenses for the active month | Returns list of yesterday's expenses with amount, category |
 | 7.2 | Custom Flet template | Create `flet_template/` — copy of Flet's default build template | Template can be used with `--template ./flet_template --template-dir build` |
-| 7.3 | Flutter deps | Add `workmanager`, `share_plus`, `sqflite`, `shared_preferences` to template `pubspec.yaml` | Dependencies included in generated Flutter project |
-| 7.4 | Dart background task | Create `lib/background_task.dart` — WorkManager callback that reads SQLite, formats yesterday's expenses, shares via WhatsApp Intent | Background task code compiles, reads DB, formats message |
+| 7.3 | Flutter deps | Add `workmanager: ^0.9.0`, `share_plus: ^12.0.2`, `sqflite: ^2.3.3` to template `pubspec.yaml` | Dependencies included in generated Flutter project |
+| 7.4 | Dart background task | Create `lib/background_task.dart` — WorkManager callback that reads SQLite, formats yesterday's expenses, shares via `SharePlus.instance.share(ShareParams(...))` | Background task code compiles, reads DB, formats message |
 | 7.5 | Register WorkManager | Modify `lib/main.dart` to call `Workmanager().initialize()` and schedule daily periodic task at 8:00 AM | Task is registered and scheduled |
 | 7.6 | Android permissions | Add `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `INTERNET` to `AndroidManifest.xml` | Permissions present in manifest |
 | 7.7 | Settings page | Add Settings toggle (enable/disable WhatsApp summary), Test button ("Send yesterday's now") in Python/Flet UI | Settings UI exists, toggle saves preference |
 | 7.8 | Config bridge | SharedPreferences bridge: Python writes config, Dart reads it | Config flows from Python ↔ Flutter |
 | 7.9 | CI update | Update `build-apk.yml` to use `--template ./flet_template --template-dir build` | Workflow uses custom template |
-| 7.10 | Build & verify | Build APK via CI, install on phone, test daily summary | APK builds, WhatsApp intent fires with correct data |
+| 7.10 | Build & verify | Build APK via CI, install on phone, test daily summary | APK builds, WhatsApp intent fires with correct data — Note: `flet_template/` must exclude ios/ dir, set `ios: false` in launcher_icons/native_splash |
+| 7.11 | Android mobile fixes | Defensive `(control.value or "").strip()` for None-safe TextField values; try/except around `refresh_expenses()`; AlertDialog instead of snackbar for critical messages | No silent failures on button callbacks |
 
 ---
 

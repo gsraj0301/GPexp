@@ -23,7 +23,7 @@ Monthly expense tracker for a single worker built with **Flet (Python + Flutter)
 | Periods | Monthly | Worker gets paid at month end |
 | Month change | Auto-detect | On July 1st, auto-close June, start July fresh |
 | Close Month | Manual button | Worker controls when payment is received |
-| Categories | Dropdown (Food/Transport/Materials/Other) + custom text field | Both options always visible |
+| Categories | Dropdown (Tea/Water/Biscuit/Snack/Transport/Cartoon/Petrol) + custom text field | Both options always visible |
 | Date picker | Yes, with calendar widget | Worker requested date selection |
 | Note field | Removed by user request | Was added, then removed |
 | Storage | SQLite | Simple, ACID, no server |
@@ -39,7 +39,9 @@ Monthly expense tracker for a single worker built with **Flet (Python + Flutter)
 - [x] Auto-detect month change (closes previous, creates current)
 - [x] History view (all months with totals, tap to see details)
 - [x] Input validation (amount > 0, future date warning)
-- [x] Error handling (DB errors caught with snackbar)
+- [x] Error handling (DB errors caught with snackbar/dialog)
+- [x] None-safe `.value` handling for mobile (`(control.value or "").strip()` pattern)
+- [x] `refresh_expenses()` wrapped in try/except to prevent UI freeze
 - [x] Build pipeline (GitHub Actions → APK)
 - [x] WhatsApp daily summary (toggle in Settings, WorkManager background task at 8AM, share_plus intent)
 - [x] Custom Flutter template (flet_template/ with WorkManager + share_plus + sqflite)
@@ -78,9 +80,12 @@ expense_tracker/
 - Custom template: `--template ./flet_template` — template dir must have `cookiecutter.json` at root
 - Template omits non-Android platforms (ios/, linux/, macos/, windows/, web/) — safe for APK-only builds
 - WorkManager: `callbackDispatcher` must be top-level with `@pragma('vm:entry-point')`
-- `share_plus` v7.2.2: `Share.share(text, subject:)` opens Android system share sheet
+- `share_plus` v12.0.2: `SharePlus.instance.share(ShareParams(text:, subject:))` — v7 API `Share.share()` removed
 - `sqflite` + Python's `sqlite3` access the same `.db` file — SQLite handles concurrent access via locking
 - `FLET_APP_STORAGE_DATA` = `getApplicationDocumentsDirectory().path` (set by Flutter, available in Python)
+- `TextField.value` can be `None` on Android → always use `(control.value or "").strip()` pattern
+- `refresh_expenses()` must be wrapped in try/except — any exception there freezes the save button silently
+- Snackbars can be invisible on mobile (overlapped by nav bars) → prefer AlertDialog for important messages
 
 ## GitHub Actions
 - Workflow: `.github/workflows/build-apk.yml`
@@ -112,13 +117,23 @@ flet build apk --project expense_tracker --product "Expense Tracker" --org com.e
    - Checks `whatsapp_enabled` → skips if false
    - Checks `whatsapp_last_sent` → skips if already today
    - Queries yesterday's expenses for active month
-   - Formats: `📅 Yesterday's Expenses (Jun 28)\n\nFood\n  • ₹50.00\n...\n─────────────\nTotal: ₹150.00`
-   - Calls `Share.share(text)` → Android system share sheet → user taps WhatsApp
+   - Formats: `📅 Yesterday's Expenses (Jun 28)\n\nTea\n  • ₹50.00\n...\n─────────────\nTotal: ₹150.00`
+   - Calls `SharePlus.instance.share(ShareParams(text:, subject:))` → Android system share sheet → user taps WhatsApp
    - Writes `whatsapp_last_sent = YYYY-MM-DD`
-5. **Test button:** "Send Yesterday's Now" in Settings — same formatting, uses `page.launch_url(f"whatsapp://send?text={encoded}")` for direct WhatsApp open
+5. **Test button:** "Send Yesterday's Now" in Settings — same formatting, uses `page.launch_url(f"whatsapp://send?text={encoded}")` for direct WhatsApp open (shows AlertDialog if no yesterday expenses)
+
+## Build Fix History
+### Session 1 — WHatsApp Feature + Build Debugging
+- **Issue:** Flet 0.85.3 requires `share_plus ^12.0.1` but template had `^7.2.2`
+- **Fix:** Bumped to `^12.0.2`, updated Dart API from `Share.share()` → `SharePlus.instance.share(ShareParams(...))`
+- **Issue:** `flutter_launcher_icons` missing from pubspec → Flet CLI `KeyError`
+- **Fix:** Restored dev_deps with `flutter_launcher_icons: ^0.14.1` but set `ios: false` (template strips ios/ dir)
+- **Issue:** `workmanager ^0.5.2` uses deprecated Flutter v1 embedding APIs (Registrar, PluginRegistrantCallback)
+- **Fix:** Bumped to `^0.9.0`, updated API: `NetworkType.not_required` → `NetworkType.notRequired`, `ExistingWorkPolicy` → `ExistingPeriodicWorkPolicy`
+- **Issue:** Button callbacks silently fail on Android — `TextField.value` can be `None`, `refresh_expenses()` exceptions freeze UI
+- **Fix:** Defensive `(control.value or "").strip()` pattern, try/except around `refresh_expenses()`, AlertDialog instead of snackbar for WhatsApp empty state
 
 ## Next Steps
-- Check GitHub Actions build result at https://github.com/gsraj0301/GPexp/actions
-- If build fails, check logs (need repo auth) and debug
-- Once APK builds: download, install on phone, test WhatsApp toggle + "Send Yesterday's Now" button
+- Install latest APK from GitHub Actions, test save expense + WhatsApp test button
 - Verify WorkManager fires at 8:00 AM next day (or change phone time to test)
+- If save still fails, check adb logcat for Python/Dart exceptions
