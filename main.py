@@ -90,10 +90,13 @@ def main(page: ft.Page):
     category_dropdown = ft.Dropdown(
         label="Pick a category",
         options=[
-            ft.dropdown.Option("Food"),
+            ft.dropdown.Option("Tea"),
+            ft.dropdown.Option("Water"),
+            ft.dropdown.Option("Biscuit"),
+            ft.dropdown.Option("Snack"),
             ft.dropdown.Option("Transport"),
-            ft.dropdown.Option("Materials"),
-            ft.dropdown.Option("Other"),
+            ft.dropdown.Option("Cartoon"),
+            ft.dropdown.Option("Petrol"),
         ],
         width=180,
         dense=True,
