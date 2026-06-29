@@ -81,8 +81,8 @@ Future<void> _scheduleDailyTask() async {
     dailyTaskName,
     frequency: const Duration(hours: 24),
     initialDelay: delay,
-    constraints: Constraints(networkType: NetworkType.not_required),
-    existingWorkPolicy: ExistingWorkPolicy.replace,
+    constraints: Constraints(networkType: NetworkType.notRequired),
+    existingWorkPolicy: ExistingPeriodicWorkPolicy.replace,
   );
 }
 
@@ -195,7 +195,7 @@ Future prepareApp() async {
 
     // Initialize WorkManager for daily WhatsApp summary (Android only)
     if (defaultTargetPlatform == TargetPlatform.android) {
-      await Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+      await Workmanager().initialize(callbackDispatcher);
       await _scheduleDailyTask();
     }
 
