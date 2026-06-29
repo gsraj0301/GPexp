@@ -43,39 +43,42 @@ def main(page: ft.Page):
 
     def refresh_expenses():
         nonlocal active_month
-        expenses = get_expenses(active_month.id)
-        total = get_month_total(active_month.id)
+        try:
+            expenses = get_expenses(active_month.id)
+            total = get_month_total(active_month.id)
 
-        total_text.value = f"Month Total: ₹{total:,.2f}"
+            total_text.value = f"Month Total: ₹{total:,.2f}"
 
-        controls = []
-        current_date = None
-        for exp in expenses:
-            exp_date = exp.date.strftime("%Y-%m-%d")
-            if exp_date != current_date:
-                current_date = exp_date
+            controls = []
+            current_date = None
+            for exp in expenses:
+                exp_date = exp.date.strftime("%Y-%m-%d")
+                if exp_date != current_date:
+                    current_date = exp_date
+                    controls.append(
+                        ft.Text(exp.date.strftime("%b %d, %Y"), size=13, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_600)
+                    )
                 controls.append(
-                    ft.Text(exp.date.strftime("%b %d, %Y"), size=13, weight=ft.FontWeight.W_600, color=ft.Colors.GREY_600)
+                    ft.ListTile(
+                        leading=ft.Icon(ft.Icons.CIRCLE, size=8, color=ft.Colors.BLUE_400),
+                        title=ft.Text(exp.category, size=15),
+                        subtitle=ft.Text(exp.note, size=12, color=ft.Colors.GREY_600) if exp.note else None,
+                        trailing=ft.Text(f"₹{exp.amount:,.2f}", size=15, weight=ft.FontWeight.W_600),
+                        dense=True,
+                    )
                 )
-            controls.append(
-                ft.ListTile(
-                    leading=ft.Icon(ft.Icons.CIRCLE, size=8, color=ft.Colors.BLUE_400),
-                    title=ft.Text(exp.category, size=15),
-                    subtitle=ft.Text(exp.note, size=12, color=ft.Colors.GREY_600) if exp.note else None,
-                    trailing=ft.Text(f"₹{exp.amount:,.2f}", size=15, weight=ft.FontWeight.W_600),
-                    dense=True,
-                )
-            )
 
-        if not controls:
-            controls.append(
-                ft.Container(
-                    content=ft.Text("No expenses yet", color=ft.Colors.GREY, italic=True),
-                    padding=20,
+            if not controls:
+                controls.append(
+                    ft.Container(
+                        content=ft.Text("No expenses yet", color=ft.Colors.GREY, italic=True),
+                        padding=20,
+                    )
                 )
-            )
 
-        expense_list.controls = controls
+            expense_list.controls = controls
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Error refreshing: {str(ex)}"), open=True)
         page.update()
 
     # --- Expense Input Form ---
@@ -130,9 +133,9 @@ def main(page: ft.Page):
 
     def save_expense(e):
         nonlocal selected_date
-        amount_str = amount_field.value.strip()
+        amount_str = (amount_field.value or "").strip()
         picked_category = category_dropdown.value
-        typed_category = custom_category_field.value.strip()
+        typed_category = (custom_category_field.value or "").strip()
 
         if not amount_str:
             page.snack_bar = ft.SnackBar(ft.Text("Please enter an amount"), open=True)
@@ -174,6 +177,7 @@ def main(page: ft.Page):
         date_text.value = selected_date.strftime("%b %d, %Y")
 
         page.snack_bar = ft.SnackBar(ft.Text("Expense saved ✅"), open=True)
+        page.update()
         refresh_expenses()
 
     save_button = ft.FilledButton(
@@ -348,10 +352,13 @@ def main(page: ft.Page):
         expenses = get_yesterday_expenses(active_month.id)
 
         if not expenses:
-            page.snack_bar = ft.SnackBar(
-                ft.Text("No expenses from yesterday to send"),
-                open=True,
+            dlg = ft.AlertDialog(
+                title=ft.Text("No Expenses"),
+                content=ft.Text("No expenses from yesterday to send.\nAdd some expenses first, then try again."),
+                actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(dlg))],
             )
+            page.dialog = dlg
+            dlg.open = True
             page.update()
             return
 
