@@ -155,13 +155,16 @@ flet build apk --project expense_tracker --product "Expense Tracker" --org com.e
 - **Issue:** WhatsApp button does nothing on Android APK
 - **Root cause:** `page.launch_url("whatsapp://send?text=...")` uses a custom URL scheme that `url_launcher` in Flutter does not always handle reliably
 - **Fix:** Replaced with `https://api.whatsapp.com/send?text=...` — this opens WhatsApp Web on desktop and redirects to the native app on Android. Also added expense count to the success alert so user can confirm data was found before the URL launch
+- **Issue:** WhatsApp button still shows no alert — not even after URL scheme fix
+- **Root cause:** `page.launch_url()` in Flet 0.85.3 is `async def` (page.py:1159). Calling it from a sync function without `await` silently creates a coroutine that is garbage collected — the URL **never launches** and no exception is raised. In Flet's event system (base_control.py:474-478), sync callbacks are called directly via `event_handler(e)` — any returned coroutines from calls within are not awaited
+- **Fix:** Made `send_test_whatsapp` an `async def` and added `await page.launch_url(...)`. Now Flet's event system properly awaits the handler (base_control.py:450-454), the URL launches, and exceptions are caught
 
 ## Next Steps (Current)
-1. Install latest APK from GitHub Actions (triggered on push) on phone
-2. Test: add expense for a past date — should save with visible AlertDialog confirmation
-3. Test: tap "Send Yesterday's Now" in Settings — should open WhatsApp with yesterday's expenses (now queries ALL months, not just active month)
-4. Verify WorkManager fires at 8:00 AM (or change phone time to test)
-5. If save still fails, check adb logcat for Python/Dart exceptions
+1. Commit and push the async fix → trigger GitHub Actions APK build
+2. Install latest APK on phone
+3. Test: tap "Send Yesterday's Now" in Settings — should open WhatsApp with yesterday's expenses
+4. If still no feedback, check adb logcat for Python/Dart exceptions
+5. Verify WorkManager fires at 8:00 AM (or change phone time to test)
 
 ## Future Ideas
 - Category presets configurable in Settings

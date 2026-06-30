@@ -357,7 +357,7 @@ def main(page: ft.Page):
         on_change=lambda e: set_setting("whatsapp_enabled", "true" if e.control.value else "false"),
     )
 
-    def send_test_whatsapp(e):
+    async def send_test_whatsapp(e):
         try:
             yesterday_date = date.today() - timedelta(days=1)
             expenses = get_all_yesterday_expenses()
@@ -385,7 +385,7 @@ def main(page: ft.Page):
 
             msg = "\n".join(lines)
             encoded = urllib.parse.quote(msg)
-            page.launch_url(f"https://api.whatsapp.com/send?text={encoded}")
+            await page.launch_url(f"https://api.whatsapp.com/send?text={encoded}")
             show_alert("WhatsApp", f"Found {len(expenses)} expense(s) for yesterday.\nOpening WhatsApp now...")
         except Exception as ex:
             show_alert("Error", f"Failed to send: {str(ex)}")
