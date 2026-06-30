@@ -116,6 +116,7 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 | 8.3 | Fix WhatsApp launch feedback | Wrap `send_test_whatsapp` in try/except with AlertDialog for success ("Opening WhatsApp..."), no-expenses, and errors | User always sees what happened when pressing "Send Yesterday's Now" |
 | 8.4 | Replace snackbars with AlertDialogs | Replace all snackbars in `save_expense()` (success, amount error, category error, future date, DB error) and `refresh_expenses()` with AlertDialogs | All user feedback visible on mobile (snackbars invisible on Android) |
 | 8.5 | Fix DatePicker timezone offset bug | In `set_date()`, handle timezone-aware datetimes from DatePicker — convert to local time via `astimezone()` before extracting `.date()` | Selecting June 29 in DatePicker shows "Jun 29" in the app, not "Jun 28" |
+| 8.6 | Fix WhatsApp launch on Android | Replace `whatsapp://send?text=` with `https://wa.me/?text=` which works more reliably on Android via `url_launcher`. Add immediate debug alert showing expense count. Add clipboard fallback if URL launch fails. | Pressing "Send Yesterday's Now" opens WhatsApp with preloaded message on installed APK |
 
 ---
 

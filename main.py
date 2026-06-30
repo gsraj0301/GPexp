@@ -385,8 +385,8 @@ def main(page: ft.Page):
 
             msg = "\n".join(lines)
             encoded = urllib.parse.quote(msg)
-            page.launch_url(f"whatsapp://send?text={encoded}")
-            show_alert("WhatsApp", "Opening WhatsApp with yesterday's expenses...")
+            page.launch_url(f"https://api.whatsapp.com/send?text={encoded}")
+            show_alert("WhatsApp", f"Found {len(expenses)} expense(s) for yesterday.\nOpening WhatsApp now...")
         except Exception as ex:
             show_alert("Error", f"Failed to send: {str(ex)}")
 
