@@ -228,7 +228,54 @@ page.update()
 
 **Lesson for next app:** Snackbars are unreliable on mobile. Use dialogs for anything the user MUST see.
 
-### 5.4 Always Call `page.update()` Before Expensive Operations
+### 5.5 Async Functions Must Be Awaited — Even in Event Handlers
+
+**Symptom:** WhatsApp "Send Yesterday's Now" button showed zero feedback on Android APK — no alert, no error, no crash. Button felt completely dead.
+
+**Root cause:** Flet 0.85.3's `page.launch_url()` is an `async def`:
+```python
+# ~/.venv/lib/python3.12/site-packages/flet/controls/page.py:1159
+async def launch_url(self, url, ...):
+    await UrlLauncher().launch_url(url)
+```
+
+We were calling it from a **sync** function without `await`:
+```python
+def send_test_whatsapp(e):              # sync
+    ...
+    page.launch_url(...)                # returns coroutine, NOT awaited
+    show_alert(...)
+```
+
+In Python, calling an `async def` without `await` simply creates a coroutine object — it is **never executed**. The coroutine gets garbage collected silently. No exception is raised, so the `try/except` doesn't catch it.
+
+The `show_alert()` after `launch_url()` should theoretically still run (the unawaited coroutine doesn't throw), but on the user's device, even the alert didn't appear — the button callback likely wasn't completing properly in Flet's synchronous callback runner.
+
+**Fix — two changes:**
+
+1. **Make the handler `async def`** so Flet's event system properly awaits it:
+   ```python
+   async def send_test_whatsapp(e):     # async
+       ...
+       await page.launch_url(...)       # actually launches NOW
+       show_alert(...)
+   ```
+
+2. **`await` the async call** so the coroutine actually executes.
+
+**How Flet runs async handlers** (`base_control.py:450-454`):
+```python
+if inspect.iscoroutinefunction(event_handler):   # async def?
+    await event_handler(e)                        # YES — properly await it
+elif callable(event_handler):                     # sync?
+    event_handler(e)                               # just call, no await
+```
+
+**Why only mobile was affected:** On desktop, `page.launch_url()` might open the URL synchronously (e.g., via `webbrowser.open()`) — the async wrapper is just for Flutter's URL launcher. On Android, the async Dart bridge is the only path, so the URL never launches.
+
+**Lesson for next Flet app:** Always check the Flet source to see if a method is `async`. If it is, your event handler must be `async def` too, and you must `await` the call. This applies to ANY Flet API that wraps a Flutter plugin — e.g., `launch_url`, clipboard operations, file pickers, camera, geolocation, etc.
+
+**Diagnosis trick:** When a button does nothing, add a `page.snack_bar = ft.SnackBar(ft.Text("debug")); page.update()` at the VERY TOP of the handler. If that doesn't show, the callback is not running at all or throwing before it runs. If it shows but nothing after, the problem is on the next line.
 
 ```python
 page.snack_bar = ft.SnackBar(ft.Text("Expense saved ✅"), open=True)
