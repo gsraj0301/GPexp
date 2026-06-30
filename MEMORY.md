@@ -91,6 +91,7 @@ expense_tracker/
 - Snackbars can be invisible on mobile (overlapped by nav bars) → always use AlertDialog for ALL user feedback (not just important messages)
 - DatePicker: create ONE instance and append to `page.overlay` once; reuse it each time. Never create a new DatePicker on each click — multiple overlays break the picker
 - AlertDialog helper pattern: define a reusable `show_alert(title, message)` that creates a dialog, assigns to `page.dialog`, opens it, and calls `page.update()`. Avoid inline `page.snack_bar` entirely for mobile targets
+- DatePicker timezone: Flutter's `DatePicker` returns midnight **local time** but Flet serializes it to UTC. For users in IST (UTC+5:30), selecting June 29 sends `2026-06-28T18:30:00Z`. Always handle timezone-aware datetimes in `set_date()`: `d.astimezone().date()` converts to local time first
 
 ## GitHub Actions
 - Workflow: `.github/workflows/build-apk.yml`
@@ -147,6 +148,10 @@ flet build apk --project expense_tracker --product "Expense Tracker" --org com.e
 - **Fix:** Wrapped entire `send_test_whatsapp` in try/except with AlertDialog for "Opening WhatsApp...", no-expenses, and error cases
 - **Issue:** All snackbar feedback invisible on mobile — success, error, and validation messages hidden behind nav bars
 - **Fix:** Replaced ALL `page.snack_bar` calls with `show_alert(title, message)` helper (AlertDialog). Covers save_expense (success + all validation errors), refresh_expenses, confirm_close_month, and auto-close month change
+- **Issue:** DatePicker shows wrong date — selecting June 29 shows June 28 in the app
+- **Root cause:** Flutter's DatePicker returns midnight **local time**. Flet serializes it to **UTC** via messagepack. For IST (UTC+5:30), June 29 00:00 IST = June 28 18:30 UTC. `datetime.fromisoformat("2026-06-28T18:30:00Z")` gives a timezone-aware datetime, and `.date()` returns June 28, not June 29
+- **Fix:** In `set_date()`, check if `d` is a `datetime` with `tzinfo`. If so, call `d.astimezone().date()` to convert to local timezone before extracting the date. Also handle naive datetime (`.date()`) and bare `date` objects
+- **Side effect:** This also fixes the "save button doesn't work for past dates" — the expense was actually saving but with the wrong (shifted) date, so the user looked for June 29 and didn't find it
 
 ## Next Steps (Current)
 1. Install latest APK from GitHub Actions (triggered on push) on phone

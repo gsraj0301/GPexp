@@ -136,9 +136,17 @@ def main(page: ft.Page):
         date_picker.open = True
         page.update()
 
-    def set_date(d: date):
+    def set_date(d):
         nonlocal selected_date
-        selected_date = d
+        if isinstance(d, datetime):
+            if d.tzinfo is not None:
+                selected_date = d.astimezone().date()
+            else:
+                selected_date = d.date()
+        elif isinstance(d, date):
+            selected_date = d
+        else:
+            selected_date = date.today()
         date_text.value = selected_date.strftime("%b %d, %Y")
         page.update()
 
@@ -184,7 +192,7 @@ def main(page: ft.Page):
         selected_date = date.today()
         date_text.value = selected_date.strftime("%b %d, %Y")
 
-        show_alert("Success", "Expense saved ✅")
+        show_alert("Success", f"Expense saved ✅ on {exp_date}")
         refresh_expenses()
 
     save_button = ft.FilledButton(

@@ -115,6 +115,7 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 | 8.2 | Fix WhatsApp query scope | Add `get_all_yesterday_expenses()` in `database.py` — queries all months for yesterday's date (not limited to `active_month.id`) | Finds yesterday's expenses regardless of which month they belong to |
 | 8.3 | Fix WhatsApp launch feedback | Wrap `send_test_whatsapp` in try/except with AlertDialog for success ("Opening WhatsApp..."), no-expenses, and errors | User always sees what happened when pressing "Send Yesterday's Now" |
 | 8.4 | Replace snackbars with AlertDialogs | Replace all snackbars in `save_expense()` (success, amount error, category error, future date, DB error) and `refresh_expenses()` with AlertDialogs | All user feedback visible on mobile (snackbars invisible on Android) |
+| 8.5 | Fix DatePicker timezone offset bug | In `set_date()`, handle timezone-aware datetimes from DatePicker — convert to local time via `astimezone()` before extracting `.date()` | Selecting June 29 in DatePicker shows "Jun 29" in the app, not "Jun 28" |
 
 ---
 
