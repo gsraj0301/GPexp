@@ -152,6 +152,9 @@ flet build apk --project expense_tracker --product "Expense Tracker" --org com.e
 - **Root cause:** Flutter's DatePicker returns midnight **local time**. Flet serializes it to **UTC** via messagepack. For IST (UTC+5:30), June 29 00:00 IST = June 28 18:30 UTC. `datetime.fromisoformat("2026-06-28T18:30:00Z")` gives a timezone-aware datetime, and `.date()` returns June 28, not June 29
 - **Fix:** In `set_date()`, check if `d` is a `datetime` with `tzinfo`. If so, call `d.astimezone().date()` to convert to local timezone before extracting the date. Also handle naive datetime (`.date()`) and bare `date` objects
 - **Side effect:** This also fixes the "save button doesn't work for past dates" — the expense was actually saving but with the wrong (shifted) date, so the user looked for June 29 and didn't find it
+- **Issue:** WhatsApp button does nothing on Android APK
+- **Root cause:** `page.launch_url("whatsapp://send?text=...")` uses a custom URL scheme that `url_launcher` in Flutter does not always handle reliably
+- **Fix:** Replaced with `https://api.whatsapp.com/send?text=...` — this opens WhatsApp Web on desktop and redirects to the native app on Android. Also added expense count to the success alert so user can confirm data was found before the URL launch
 
 ## Next Steps (Current)
 1. Install latest APK from GitHub Actions (triggered on push) on phone
