@@ -82,6 +82,8 @@ GitHub Actions builds automatically on push to `main`.
 2. **Automatic** — WorkManager fires daily at 8:00 AM (via Flutter/Dart), reads yesterday's expenses, opens share sheet
 3. **Manual** — tap "Send Yesterday's Now" in Settings → opens WhatsApp with formatted message instantly
 
+> **Important:** The manual button's handler must be `async def` because `page.launch_url()` in Flet 0.85.3 is an async method. Calling it from a sync function without `await` silently discards the coroutine — the URL never launches and no error is shown.
+
 Format:
 ```
 📅 Yesterday's Expenses (Jun 29)
@@ -108,3 +110,12 @@ ExpenseMonth              Expense
 │ closed_at               │ note
 │ created_at              │
 ```
+
+## Gotchas
+
+- **Async Flet APIs:** Many Flet APIs (e.g., `page.launch_url()`) are `async def` but are not documented as such. If a button callback calls an async function, the callback itself must be `async def` with `await` on the call. Calling an `async def` without `await` returns an unexecuted coroutine — no error, no action.
+- **`TextField.value` may be `None`:** On Android, always use `(control.value or "").strip()` instead of `control.value.strip()`.
+- **Snackbars invisible on mobile:** Use `AlertDialog` for important user feedback.
+- **DatePicker returns UTC:** Flutter serializes local midnight to UTC. Use `d.astimezone().date()` to convert back to local time.
+- **DatePicker overlay accumulation:** Create one `DatePicker` instance and reuse it. Appending a new one on each click breaks the picker after repeated opens.
+- **Database path:** On Android, the DB lives in `getApplicationDocumentsDirectory()`, passed via `FLET_APP_STORAGE_DATA` env var. On desktop, it falls back to the current directory.
