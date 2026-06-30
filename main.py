@@ -6,7 +6,7 @@ from database import (
     init_db, get_active_month, get_all_months, get_month,
     add_expense, get_expenses, get_month_total,
     close_month, create_month,
-    get_setting, set_setting, get_yesterday_expenses,
+    get_setting, set_setting, get_all_yesterday_expenses,
 )
 
 MONTH_NAMES = [
@@ -29,16 +29,28 @@ def main(page: ft.Page):
     def get_month_label(year: int, month: int) -> str:
         return f"{MONTH_NAMES[month]} {year}"
 
+    def close_dialog(dlg):
+        dlg.open = False
+        page.update()
+
+    def show_alert(title: str, message: str):
+        dlg = ft.AlertDialog(
+            title=ft.Text(title),
+            content=ft.Text(message),
+            actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(dlg))],
+        )
+        page.dialog = dlg
+        dlg.open = True
+        page.update()
+
     if active_month.year < now.year or (active_month.year == now.year and active_month.month < now.month):
         closed_label = get_month_label(active_month.year, active_month.month)
         closed_total = get_month_total(active_month.id)
         close_month(active_month.id)
         active_month = create_month(now.year, now.month)
-        page.snack_bar = ft.SnackBar(
-            ft.Text(
-                f"{closed_label} closed (₹{closed_total:,.2f}). Now tracking {get_month_label(active_month.year, active_month.month)}."
-            ),
-            open=True,
+        show_alert(
+            "Month Changed",
+            f"{closed_label} closed (₹{closed_total:,.2f}). Now tracking {get_month_label(active_month.year, active_month.month)}."
         )
 
     def refresh_expenses():
@@ -78,10 +90,15 @@ def main(page: ft.Page):
 
             expense_list.controls = controls
         except Exception as ex:
-            page.snack_bar = ft.SnackBar(ft.Text(f"Error refreshing: {str(ex)}"), open=True)
+            show_alert("Error", f"Error refreshing: {str(ex)}")
         page.update()
 
     # --- Expense Input Form ---
+
+    date_picker = ft.DatePicker(
+        on_change=lambda e: set_date(e.control.value),
+    )
+    page.overlay.append(date_picker)
 
     amount_field = ft.TextField(
         label="Amount (₹)",
@@ -116,11 +133,7 @@ def main(page: ft.Page):
     date_text = ft.Text(selected_date.strftime("%b %d, %Y"), size=14)
 
     def pick_date(e):
-        dp = ft.DatePicker(
-            on_change=lambda e: set_date(e.control.value),
-        )
-        page.overlay.append(dp)
-        dp.open = True
+        date_picker.open = True
         page.update()
 
     def set_date(d: date):
@@ -138,27 +151,23 @@ def main(page: ft.Page):
         typed_category = (custom_category_field.value or "").strip()
 
         if not amount_str:
-            page.snack_bar = ft.SnackBar(ft.Text("Please enter an amount"), open=True)
-            page.update()
+            show_alert("Error", "Please enter an amount")
             return
         try:
             amount = float(amount_str)
             if amount <= 0:
                 raise ValueError
         except ValueError:
-            page.snack_bar = ft.SnackBar(ft.Text("Amount must be a positive number"), open=True)
-            page.update()
+            show_alert("Error", "Amount must be a positive number")
             return
 
         category = picked_category or typed_category
         if not category:
-            page.snack_bar = ft.SnackBar(ft.Text("Pick a category or type your own"), open=True)
-            page.update()
+            show_alert("Error", "Pick a category or type your own")
             return
 
         if selected_date > date.today():
-            page.snack_bar = ft.SnackBar(ft.Text("Date cannot be in the future"), open=True)
-            page.update()
+            show_alert("Error", "Date cannot be in the future")
             return
 
         exp_date = selected_date.isoformat()
@@ -166,8 +175,7 @@ def main(page: ft.Page):
         try:
             add_expense(active_month.id, amount, category, "", exp_date)
         except Exception as ex:
-            page.snack_bar = ft.SnackBar(ft.Text(f"Error saving: {str(ex)}"), open=True)
-            page.update()
+            show_alert("Error", f"Error saving: {str(ex)}")
             return
 
         amount_field.value = ""
@@ -176,8 +184,7 @@ def main(page: ft.Page):
         selected_date = date.today()
         date_text.value = selected_date.strftime("%b %d, %Y")
 
-        page.snack_bar = ft.SnackBar(ft.Text("Expense saved ✅"), open=True)
-        page.update()
+        show_alert("Success", "Expense saved ✅")
         refresh_expenses()
 
     save_button = ft.FilledButton(
@@ -221,10 +228,6 @@ def main(page: ft.Page):
         dlg.open = True
         page.update()
 
-    def close_dialog(dlg):
-        dlg.open = False
-        page.update()
-
     show_total_btn = ft.OutlinedButton(
         content=ft.Row([ft.Icon(ft.Icons.ACCOUNT_BALANCE_WALLET_OUTLINED), ft.Text("Show Total")], tight=True),
         on_click=show_total_dialog,
@@ -261,7 +264,7 @@ def main(page: ft.Page):
         active_month = create_month(next_year, next_month)
 
         page.appbar.title = ft.Text(get_month_label(active_month.year, active_month.month), size=22, weight=ft.FontWeight.BOLD)
-        page.snack_bar = ft.SnackBar(ft.Text(f"{get_month_label(active_month.year, active_month.month)} started! Total paid: ₹{total:,.2f}"), open=True)
+        show_alert("Month Closed", f"{get_month_label(active_month.year, active_month.month)} started! Total paid: ₹{total:,.2f}")
         refresh_expenses()
 
     close_month_btn = ft.FilledButton(
@@ -347,41 +350,37 @@ def main(page: ft.Page):
     )
 
     def send_test_whatsapp(e):
-        yesterday_date = date.today() - timedelta(days=1)
-        yesterday_str = yesterday_date.isoformat()
-        expenses = get_yesterday_expenses(active_month.id)
+        try:
+            yesterday_date = date.today() - timedelta(days=1)
+            expenses = get_all_yesterday_expenses()
 
-        if not expenses:
-            dlg = ft.AlertDialog(
-                title=ft.Text("No Expenses"),
-                content=ft.Text("No expenses from yesterday to send.\nAdd some expenses first, then try again."),
-                actions=[ft.TextButton("OK", on_click=lambda e: close_dialog(dlg))],
-            )
-            page.dialog = dlg
-            dlg.open = True
-            page.update()
-            return
+            if not expenses:
+                show_alert("No Expenses", "No expenses from yesterday to send.\nAdd some expenses first, then try again.")
+                return
 
-        lines = []
-        lines.append(f"📅 Yesterday's Expenses ({yesterday_date.strftime('%b %d, %Y')})")
-        lines.append("")
-        total = 0.0
-        last_cat = None
-        for exp in expenses:
-            if exp.category != last_cat:
-                if last_cat is not None:
-                    lines.append("")
-                lines.append(exp.category)
-                last_cat = exp.category
-            lines.append(f"  • ₹{exp.amount:,.2f}")
-            total += exp.amount
-        lines.append("")
-        lines.append("─────────────")
-        lines.append(f"Total: ₹{total:,.2f}")
+            lines = []
+            lines.append(f"📅 Yesterday's Expenses ({yesterday_date.strftime('%b %d, %Y')})")
+            lines.append("")
+            total = 0.0
+            last_cat = None
+            for exp in expenses:
+                if exp.category != last_cat:
+                    if last_cat is not None:
+                        lines.append("")
+                    lines.append(exp.category)
+                    last_cat = exp.category
+                lines.append(f"  • ₹{exp.amount:,.2f}")
+                total += exp.amount
+            lines.append("")
+            lines.append("─────────────")
+            lines.append(f"Total: ₹{total:,.2f}")
 
-        msg = "\n".join(lines)
-        encoded = urllib.parse.quote(msg)
-        page.launch_url(f"whatsapp://send?text={encoded}")
+            msg = "\n".join(lines)
+            encoded = urllib.parse.quote(msg)
+            page.launch_url(f"whatsapp://send?text={encoded}")
+            show_alert("WhatsApp", "Opening WhatsApp with yesterday's expenses...")
+        except Exception as ex:
+            show_alert("Error", f"Failed to send: {str(ex)}")
 
     test_btn = ft.OutlinedButton(
         content=ft.Row([ft.Icon(ft.Icons.SEND), ft.Text("Send Yesterday's Now")], tight=True),

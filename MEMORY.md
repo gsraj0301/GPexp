@@ -45,13 +45,16 @@ Monthly expense tracker for a single worker built with **Flet (Python + Flutter)
 - [x] Build pipeline (GitHub Actions → APK)
 - [x] WhatsApp daily summary (toggle in Settings, WorkManager background task at 8AM, share_plus intent)
 - [x] Custom Flutter template (flet_template/ with WorkManager + share_plus + sqflite)
+- [x] DatePicker single instance (fixed overlay accumulation bug — date picker no longer "stuck")
+- [x] All feedback uses AlertDialog (snackbars invisible on mobile — replaced everywhere)
+- [x] WhatsApp "Send Yesterday" queries all months (not just active month, finds expenses across month boundaries)
 
 ## Files
 ```
 expense_tracker/
 ├── main.py                     # Flet UI (entry point)
 ├── models.py                   # Dataclasses (ExpenseMonth, Expense)
-├── database.py                 # SQLite CRUD + settings + get_yesterday_expenses
+├── database.py                 # SQLite CRUD + settings + get_yesterday_expenses + get_all_yesterday_expenses
 ├── requirements.txt            # flet (for GitHub Actions build)
 ├── pyproject.toml              # (optional) project config
 ├── .gitignore
@@ -85,7 +88,9 @@ expense_tracker/
 - `FLET_APP_STORAGE_DATA` = `getApplicationDocumentsDirectory().path` (set by Flutter, available in Python)
 - `TextField.value` can be `None` on Android → always use `(control.value or "").strip()` pattern
 - `refresh_expenses()` must be wrapped in try/except — any exception there freezes the save button silently
-- Snackbars can be invisible on mobile (overlapped by nav bars) → prefer AlertDialog for important messages
+- Snackbars can be invisible on mobile (overlapped by nav bars) → always use AlertDialog for ALL user feedback (not just important messages)
+- DatePicker: create ONE instance and append to `page.overlay` once; reuse it each time. Never create a new DatePicker on each click — multiple overlays break the picker
+- AlertDialog helper pattern: define a reusable `show_alert(title, message)` that creates a dialog, assigns to `page.dialog`, opens it, and calls `page.update()`. Avoid inline `page.snack_bar` entirely for mobile targets
 
 ## GitHub Actions
 - Workflow: `.github/workflows/build-apk.yml`
@@ -133,7 +138,25 @@ flet build apk --project expense_tracker --product "Expense Tracker" --org com.e
 - **Issue:** Button callbacks silently fail on Android — `TextField.value` can be `None`, `refresh_expenses()` exceptions freeze UI
 - **Fix:** Defensive `(control.value or "").strip()` pattern, try/except around `refresh_expenses()`, AlertDialog instead of snackbar for WhatsApp empty state
 
-## Next Steps
-- Install latest APK from GitHub Actions, test save expense + WhatsApp test button
-- Verify WorkManager fires at 8:00 AM next day (or change phone time to test)
-- If save still fails, check adb logcat for Python/Dart exceptions
+### Session 2 — DatePicker Overlay Bug + WhatsApp Cross-Month + AlertDialog Everywhere
+- **Issue:** DatePicker gets "stuck" after repeated taps — multiple `DatePicker` instances accumulate in `page.overlay`, breaking the picker
+- **Fix:** Create ONE `DatePicker` instance at component scope, append to `page.overlay` once, reuse in `pick_date()`
+- **Issue:** WhatsApp "Send Yesterday's Now" doesn't find expenses — queries by `active_month.id` but yesterday's expenses may be in a different (closed) month
+- **Fix:** Added `get_all_yesterday_expenses()` in `database.py` — queries ALL months for yesterday's date via `WHERE date = ?` without month filter
+- **Issue:** WhatsApp button shows no feedback on mobile — if `get_yesterday_expenses` returns empty, the AlertDialog may be invisible; no error on launch failure
+- **Fix:** Wrapped entire `send_test_whatsapp` in try/except with AlertDialog for "Opening WhatsApp...", no-expenses, and error cases
+- **Issue:** All snackbar feedback invisible on mobile — success, error, and validation messages hidden behind nav bars
+- **Fix:** Replaced ALL `page.snack_bar` calls with `show_alert(title, message)` helper (AlertDialog). Covers save_expense (success + all validation errors), refresh_expenses, confirm_close_month, and auto-close month change
+
+## Next Steps (Current)
+1. Install latest APK from GitHub Actions (triggered on push) on phone
+2. Test: add expense for a past date — should save with visible AlertDialog confirmation
+3. Test: tap "Send Yesterday's Now" in Settings — should open WhatsApp with yesterday's expenses (now queries ALL months, not just active month)
+4. Verify WorkManager fires at 8:00 AM (or change phone time to test)
+5. If save still fails, check adb logcat for Python/Dart exceptions
+
+## Future Ideas
+- Category presets configurable in Settings
+- Export to CSV/PDF
+- Edit/delete existing expense
+- Backup DB to Google Drive

@@ -10,10 +10,12 @@ A lightweight mobile/desktop app for a single worker to track daily expenses on 
 
 | Layer | Technology | Rationale |
 |-------|-----------|-----------|
-| Language | Python 3.11+ | Worker is familiar with Python (tkinter/Qt5) |
-| UI Framework | Flet | Python-based, reactive UI, desktop dev → mobile deploy, no Android Studio needed |
+| Language | Python 3.12 | Worker is familiar with Python (tkinter/Qt5) |
+| UI Framework | Flet 0.85.3 | Python-based, reactive UI, desktop dev → mobile deploy |
 | Storage | SQLite (via `sqlite3`) | Local-only, zero setup, lightweight |
-| Packaging | Flet Cloud Build | Generates APK for Android without Android Studio on local machine |
+| Packaging | GitHub Actions → APK | Automates build on push/trigger |
+| Background Tasks | WorkManager (Dart) | Daily WhatsApp summary at 8 AM |
+| Share Intent | share_plus (Dart) | Opens WhatsApp via Android share sheet |
 
 ---
 
@@ -48,8 +50,7 @@ A lightweight mobile/desktop app for a single worker to track daily expenses on 
 | `id` | INTEGER PK | Auto-increment |
 | `month_id` | INTEGER FK | References ExpenseMonth.id |
 | `amount` | REAL | Expense amount (always positive) |
-| `category` | TEXT | Predefined (Food/Transport/Materials/Other) or custom |
-| `note` | TEXT | Optional user note |
+| `category` | TEXT | Predefined (Tea/Water/Biscuit/Snack/Transport/Cartoon/Petrol) or custom |
 | `date` | TEXT (ISO 8601) | Date the expense was incurred |
 
 ### Constraints
@@ -98,34 +99,48 @@ A lightweight mobile/desktop app for a single worker to track daily expenses on 
 ## Component Tree (Flet Controls)
 
 ```
-Page
-├── AppBar ("June 2026" + History IconButton)
-├── Column (main content, scrollable)
+Page (Stack)
+├── AppBar ("June 2026" + History + Settings IconButtons)
+│
+├── Main Body (visible by default)
 │   ├── Card: Expense Input Form
 │   │   ├── Row
 │   │   │   ├── TextField (amount, numeric keyboard)
-│   │   │   ├── Dropdown (category: Food/Transport/Materials/Other/Custom)
-│   │   │   └── IconButton (date picker)
-│   │   ├── TextField (custom category, shown when "Custom" selected)
-│   │   └── ElevatedButton ("✓ Save Expense")
+│   │   │   └── Dropdown (category: Tea/Water/Biscuit/Snack/Transport/Cartoon/Petrol)
+│   │   ├── TextField (custom category, always visible)
+│   │   └── Row
+│   │       ├── IconButton (date picker)
+│   │       ├── Text (selected date)
+│   │       └── FilledButton ("✓ Save")
 │   │
 │   ├── Divider
 │   │
-│   ├── Expense List (ListView / Column)
-│   │   └── [for each expense]
-│   │       Card
-│   │       └── ListTile
-│   │           ├── leading: date
-│   │           ├── title: category
-│   │           ├── subtitle: note (optional)
-│   │           └── trailing: amount (₹)
+│   ├── Expense List (Column)
+│   │   ├── Date header ("Jun 29, 2026")
+│   │   │   └── [for each expense]
+│   │   │       ListTile (category + amount ₹)
+│   │   └── (or "No expenses yet" empty state)
 │   │
-│   └── Card: Footer
-│       ├── Text ("Month Total: ₹xxx")
-│       ├── OutlinedButton ("💰 Show Total")
-│       └── FilledButton ("✅ Close Month")
+│   ├── Divider
+│   │
+│   ├── Text ("Month Total: ₹xxx")
+│   └── Row
+│       ├── OutlinedButton ("Show Total")
+│       └── FilledButton ("Close Month")
 │
-└── Dialog (Total popup / Close Month confirmation / History)
+├── History View (hidden)
+│   └── Column
+│       └── [for each month]
+│           Card → tap → AlertDialog with expense list
+│
+└── Settings View (hidden)
+    └── Card
+        ├── Text ("WhatsApp Daily Summary")
+        ├── Switch (enable/disable)
+        ├── Divider
+        └── OutlinedButton ("Send Yesterday's Now")
+
+Dialogs: AlertDialog (Save success, validation errors, month summary, close confirmation, WhatsApp feedback)
 ```
 
 ---
@@ -153,6 +168,11 @@ Page
 - Confirmation: "Close June 2026? Make sure you've received payment."
 - On confirm: sets `is_closed=1`, `closed_at=now`, creates new month record
 - If next month already exists (unusual), just activates it
+
+### 5. WhatsApp Settings
+- Toggle to enable/disable daily summary
+- "Send Yesterday's Now" button → opens WhatsApp with formatted message of yesterday's expenses
+- WorkManager (Dart) handles automatic 8 AM daily trigger in background
 
 ---
 
@@ -192,13 +212,24 @@ Page
 ## Directory Structure
 
 ```
-expense_tracker/
-├── main.py              # Entry point, Flet UI
-├── database.py          # SQLite operations
-├── models.py            # Dataclasses / NamedTuples
-├── ARCHITECTURE.md      # This file
-├── SPEC.md              # Task breakdown
-└── expenses.db          # SQLite database (auto-created on first run)
+├── main.py                     # Flet UI (entry point)
+├── database.py                 # SQLite CRUD + settings
+├── models.py                   # Dataclasses (ExpenseMonth, Expense)
+├── flet_template/              # Custom Flutter template for APK build
+│   └── {{cookiecutter.out_dir}}/
+│       ├── pubspec.yaml        # +workmanager, +share_plus, +sqflite
+│       └── lib/
+│           ├── main.dart       # WorkManager init + schedule
+│           ├── python.dart     # Flet default
+│           └── background_task.dart  # Daily WhatsApp summary
+├── .github/workflows/
+│   └── build-apk.yml           # GitHub Action → APK
+├── requirements.txt
+├── ARCHITECTURE.md
+├── SPEC.md
+├── MEMORY.md
+├── DECISION.md
+└── README.md
 ```
 
 ---

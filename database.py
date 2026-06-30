@@ -249,6 +249,18 @@ def get_yesterday_expenses(month_id: int) -> List[Expense]:
     return [_row_to_expense(r) for r in rows]
 
 
+def get_all_yesterday_expenses() -> List[Expense]:
+    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    conn = _get_conn()
+    cur = conn.execute(
+        "SELECT * FROM expenses WHERE date = ? ORDER BY id",
+        (yesterday,),
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [_row_to_expense(r) for r in rows]
+
+
 def get_month_total(month_id: int) -> float:
     conn = _get_conn()
     cur = conn.execute(

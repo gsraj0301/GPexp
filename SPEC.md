@@ -107,6 +107,17 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 
 ---
 
+## Milestone 8: Bug Fixes — DatePicker, WhatsApp, Mobile Feedback
+
+| # | Task | Description | Acceptance Criteria |
+|---|------|-------------|-------------------|
+| 8.1 | Fix DatePicker overlay accumulation | Create single `DatePicker` instance in `main()` scope and reuse it, instead of appending a new one to `page.overlay` on each click | DatePicker works on repeated clicks without "stuck" behavior |
+| 8.2 | Fix WhatsApp query scope | Add `get_all_yesterday_expenses()` in `database.py` — queries all months for yesterday's date (not limited to `active_month.id`) | Finds yesterday's expenses regardless of which month they belong to |
+| 8.3 | Fix WhatsApp launch feedback | Wrap `send_test_whatsapp` in try/except with AlertDialog for success ("Opening WhatsApp..."), no-expenses, and errors | User always sees what happened when pressing "Send Yesterday's Now" |
+| 8.4 | Replace snackbars with AlertDialogs | Replace all snackbars in `save_expense()` (success, amount error, category error, future date, DB error) and `refresh_expenses()` with AlertDialogs | All user feedback visible on mobile (snackbars invisible on Android) |
+
+---
+
 ## Data Flow Summary
 
 ```
