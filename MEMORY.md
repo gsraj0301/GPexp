@@ -7,7 +7,7 @@ Monthly expense tracker for a single worker built with **Flet (Python + Flutter)
 - **Language:** Python 3.12
 - **Framework:** Flet 0.85.3
 - **Storage:** SQLite (`expenses.db`, auto-created)
-- **Build:** GitHub Actions → APK artifact
+- **Build:** GitHub Actions → APK artifact + tagged GitHub release
 
 ## Data Model
 - `ExpenseMonth`: id, year, month, is_closed, closed_at, created_at
@@ -97,20 +97,31 @@ expense_tracker/
 - Workflow: `.github/workflows/build-apk.yml`
 - Trigger: push to `main` OR manual `workflow_dispatch`
 - APK output: `build/apk/` → uploaded as artifact `expense-tracker-apk`
+- Install step: `pip install -r requirements.txt` (pins `flet==0.85.3`)
 - Build command: `flet build apk --project expense_tracker --product "Expense Tracker" --org com.expensetracker --template ./flet_template --yes`
 - Simplified workflow (removed setup-java, setup-android — Flet handles these)
+- Artifacts expire; tagged releases are the permanent download path
+
+## Release
+- Version: `v1.0.0`
+- Release: https://github.com/gsraj0301/GPexp/releases/tag/v1.0.0
+- APK: https://github.com/gsraj0301/GPexp/releases/download/v1.0.0/expense_tracker.apk
+- Size: 70,108,687 bytes
+- SHA-256: `73b50320579cd3547866e35d00b44b2f363c793f723bc4ea3643f6dfde6f358a`
+- Tag commit: `1e1cb80` (`fix: pin Flet 0.85.3 for reproducible APK builds`)
+- README install section links the APK and release
 
 ## To Run Locally
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install flet
+pip install -r requirements.txt
 python main.py
 ```
 
 ## To Build APK (on a powerful machine or CI)
 ```bash
-pip install flet
+pip install -r requirements.txt
 flet build apk --project expense_tracker --product "Expense Tracker" --org com.expensetracker --template ./flet_template --yes
 ```
 
@@ -126,7 +137,7 @@ flet build apk --project expense_tracker --product "Expense Tracker" --org com.e
    - Formats: `📅 Yesterday's Expenses (Jun 28)\n\nTea\n  • ₹50.00\n...\n─────────────\nTotal: ₹150.00`
    - Calls `SharePlus.instance.share(ShareParams(text:, subject:))` → Android system share sheet → user taps WhatsApp
    - Writes `whatsapp_last_sent = YYYY-MM-DD`
-5. **Test button:** "Send Yesterday's Now" in Settings — same formatting, uses `page.launch_url(f"whatsapp://send?text={encoded}")` for direct WhatsApp open (shows AlertDialog if no yesterday expenses)
+5. **Test button:** "Send Yesterday's Now" in Settings — same formatting, uses `await page.launch_url(f"https://api.whatsapp.com/send?text={encoded}")` for direct WhatsApp open (shows AlertDialog if no yesterday expenses)
 
 ## Build Fix History
 ### Session 1 — WHatsApp Feature + Build Debugging
@@ -159,12 +170,20 @@ flet build apk --project expense_tracker --product "Expense Tracker" --org com.e
 - **Root cause:** `page.launch_url()` in Flet 0.85.3 is `async def` (page.py:1159). Calling it from a sync function without `await` silently creates a coroutine that is garbage collected — the URL **never launches** and no exception is raised. In Flet's event system (base_control.py:474-478), sync callbacks are called directly via `event_handler(e)` — any returned coroutines from calls within are not awaited
 - **Fix:** Made `send_test_whatsapp` an `async def` and added `await page.launch_url(...)`. Now Flet's event system properly awaits the handler (base_control.py:450-454), the URL launches, and exceptions are caught
 
+### Session 3 — Reproducible Build + v1.0.0 Release
+- **Issue:** Manual APK build failed because unpinned Flet installed `1.0.5`, which is incompatible with the custom Flet 0.85.3 template (`--python-version` error)
+- **Fix:** Pinned `flet==0.85.3` in `requirements.txt`; workflow now runs `pip install -r requirements.txt`
+- **Issue:** Previous successful APK artifact had expired, so there was no permanent download
+- **Fix:** Downloaded the successful CI artifact and published it as a GitHub release instead of relying on workflow artifacts
+- **Result:** Build run `41013788793` passed in 9m30s; `v1.0.0` release published with the APK attached and linked from the README
+- **Result:** Final docs-only build run `41015409436` also passed in 9m08s
+
 ## Next Steps (Current)
-1. Commit and push the async fix → trigger GitHub Actions APK build
-2. Install latest APK on phone
-3. Test: tap "Send Yesterday's Now" in Settings — should open WhatsApp with yesterday's expenses
-4. If still no feedback, check adb logcat for Python/Dart exceptions
-5. Verify WorkManager fires at 8:00 AM (or change phone time to test)
+1. Install `v1.0.0` APK on the phone
+2. Test: tap "Send Yesterday's Now" in Settings — should open WhatsApp with yesterday's expenses
+3. If still no feedback, check adb logcat for Python/Dart exceptions
+4. Verify WorkManager fires at 8:00 AM (or change phone time to test)
+5. Add a release workflow so future tags publish APKs automatically
 
 ## Future Ideas
 - Category presets configurable in Settings

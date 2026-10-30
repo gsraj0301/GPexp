@@ -83,9 +83,10 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 | # | Task | Description | Acceptance Criteria |
 |---|------|-------------|-------------------|
 | 6.1 | Test as desktop app | Run `flet run main.py` — verify all features work | All milestones 1-5 work |
-| 6.2 | Build APK | Use Flet Cloud Build or Colab to generate Android APK | APK file generated |
-| 6.3 | Install on Android | Side-load APK on worker's Android phone | App opens, features work |
-| 6.4 | Data persistence test | Add expenses, close app, reopen — data still there | SQLite persistence confirmed |
+| 6.2 | Build APK | Build via GitHub Actions with pinned `flet==0.85.3` | APK generated and uploaded as workflow artifact |
+| 6.3 | Publish release | Tag `v1.0.0` and attach the tested APK | Release page has a permanent APK download |
+| 6.4 | Install on Android | Side-load the `v1.0.0` APK on the phone | App opens, features work |
+| 6.5 | Data persistence test | Add expenses, close app, reopen — data still there | SQLite persistence confirmed |
 
 ---
 
@@ -100,7 +101,7 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 | 7.5 | Register WorkManager | Modify `lib/main.dart` to call `Workmanager().initialize()` and schedule daily periodic task at 8:00 AM | Task is registered and scheduled |
 | 7.6 | Android permissions | Add `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED`, `INTERNET` to `AndroidManifest.xml` | Permissions present in manifest |
 | 7.7 | Settings page | Add Settings toggle (enable/disable WhatsApp summary), Test button ("Send yesterday's now") in Python/Flet UI | Settings UI exists, toggle saves preference |
-| 7.8 | Config bridge | SharedPreferences bridge: Python writes config, Dart reads it | Config flows from Python ↔ Flutter |
+| 7.8 | Config bridge | SQLite `settings` table: Python writes config, Dart reads the same DB | Config flows from Python ↔ Flutter |
 | 7.9 | CI update | Update `build-apk.yml` to use `--template ./flet_template --template-dir build` | Workflow uses custom template |
 | 7.10 | Build & verify | Build APK via CI, install on phone, test daily summary | APK builds, WhatsApp intent fires with correct data — Note: `flet_template/` must exclude ios/ dir, set `ios: false` in launcher_icons/native_splash |
 | 7.11 | Android mobile fixes | Defensive `(control.value or "").strip()` for None-safe TextField values; try/except around `refresh_expenses()`; AlertDialog instead of snackbar for critical messages | No silent failures on button callbacks |
@@ -116,7 +117,7 @@ Functional specification and task breakdown for the Monthly Expense Tracker app.
 | 8.3 | Fix WhatsApp launch feedback | Wrap `send_test_whatsapp` in try/except with AlertDialog for success ("Opening WhatsApp..."), no-expenses, and errors | User always sees what happened when pressing "Send Yesterday's Now" |
 | 8.4 | Replace snackbars with AlertDialogs | Replace all snackbars in `save_expense()` (success, amount error, category error, future date, DB error) and `refresh_expenses()` with AlertDialogs | All user feedback visible on mobile (snackbars invisible on Android) |
 | 8.5 | Fix DatePicker timezone offset bug | In `set_date()`, handle timezone-aware datetimes from DatePicker — convert to local time via `astimezone()` before extracting `.date()` | Selecting June 29 in DatePicker shows "Jun 29" in the app, not "Jun 28" |
-| 8.6 | Fix WhatsApp launch on Android | Replace `whatsapp://send?text=` with `https://wa.me/?text=` which works more reliably on Android via `url_launcher`. Add immediate debug alert showing expense count. Add clipboard fallback if URL launch fails. | Pressing "Send Yesterday's Now" opens WhatsApp with preloaded message on installed APK |
+| 8.6 | Fix WhatsApp launch on Android | Replace `whatsapp://send?text=` with `https://api.whatsapp.com/send?text=`, which opens WhatsApp Web on desktop and the native app on Android via `url_launcher`. Include the expense count in the confirmation alert. | Pressing "Send Yesterday's Now" opens WhatsApp with preloaded message on installed APK |
 | 8.7 | Fix async WhatsApp callback | Make `send_test_whatsapp` an `async def` and `await page.launch_url()` — Flet 0.85.3's `launch_url` is async; calling it without `await` silently discards the coroutine and never launches the URL | WhatsApp button actually opens WhatsApp on Android |
 
 ---

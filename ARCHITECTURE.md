@@ -13,7 +13,7 @@ A lightweight mobile/desktop app for a single worker to track daily expenses on 
 | Language | Python 3.12 | Worker is familiar with Python (tkinter/Qt5) |
 | UI Framework | Flet 0.85.3 | Python-based, reactive UI, desktop dev → mobile deploy |
 | Storage | SQLite (via `sqlite3`) | Local-only, zero setup, lightweight |
-| Packaging | GitHub Actions → APK | Automates build on push/trigger |
+| Packaging | GitHub Actions → APK artifact + GitHub release | Automates builds and provides a permanent install path |
 | Background Tasks | WorkManager (Dart) | Daily WhatsApp summary at 8 AM |
 | Share Intent | share_plus (Dart) | Opens WhatsApp via Android share sheet |
 
@@ -250,3 +250,13 @@ Dialogs: AlertDialog (Save success, validation errors, month summary, close conf
 6. **Flet over KivyMD** — more modern UI, easier deployment, reactive pattern, smaller binary.
 
 7. **Async event handlers for async Flet APIs** — Flet 0.85.3 has several undocumented `async def` methods (e.g., `page.launch_url()`). When using them, the event handler must be `async def` and the call must be `await`ed. Calling an `async def` from a sync handler returns an unexecuted coroutine — no error, no action. This is a silent failure that only manifests on mobile (where the async Flutter bridge is the only path). Desktop may work by coincidence (e.g., `webbrowser.open()`). Always check the Flet source when a button does nothing on device.
+
+---
+
+## Release Process
+
+- `requirements.txt` pins `flet==0.85.3`; the custom Android template is not compatible with Flet 1.x.
+- Pushes to `main` run GitHub Actions, build the APK, and upload `expense-tracker-apk` from `build/apk/`.
+- Workflow artifacts expire, so tested APKs are copied to tagged GitHub releases.
+- `v1.0.0` is published at https://github.com/gsraj0301/GPexp/releases/tag/v1.0.0 with `expense_tracker.apk` attached.
+- The release tag points to commit `1e1cb80`; later docs-only commits on `main` do not change the shipped APK.

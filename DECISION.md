@@ -294,7 +294,7 @@ If `refresh_expenses()` throws, the user still sees the success snackbar. Withou
 `.github/workflows/build-apk.yml` triggers on push to `main` or manual `workflow_dispatch`.
 
 ```yaml
-- run: pip install flet
+- run: pip install -r requirements.txt   # pins flet==0.85.3
 - run: flet build apk --project expense_tracker --product "Expense Tracker" \
         --org com.expensetracker --template ./flet_template --yes
 - uses: actions/upload-artifact@v4
@@ -305,6 +305,8 @@ If `refresh_expenses()` throws, the user still sees the success snackbar. Withou
 
 **Lesson:** Don't install `setup-java` or `setup-android` — Flet's CLI handles Android SDK setup. The GitHub Actions Ubuntu runner already has everything needed.
 
+**Lesson:** Never install unpinned `flet` for this project. A manual run picked up Flet `1.0.5`, which no longer accepts the `--python-version` option expected by the custom 0.85.3 template, and the build failed. Pin the version in `requirements.txt` and install from that file everywhere (local and CI).
+
 ### 6.2 Flet Build Timing
 
 - First build: ~6-8 minutes (downloads Flutter, Android SDK, NDK, builds)
@@ -314,6 +316,20 @@ If `refresh_expenses()` throws, the user still sees the success snackbar. Withou
 ### 6.3 APK Output
 
 The APK ends up at `build/apk/` relative to the project root. It's unsigned (debug signing). For production, add a signing config, but for personal use, debug-signed is fine.
+
+**Don't rely on workflow artifacts for distribution.** They expire. Download the tested artifact and attach it to a tagged GitHub release.
+
+### 6.4 Release Publishing
+
+`v1.0.0` was published manually:
+
+```bash
+gh run download <run-id> --repo gsraj0301/GPexp --dir /tmp/gpexp-artifact
+gh release create v1.0.0 /tmp/gpexp-artifact/expense-tracker-apk/expense_tracker.apk \
+  --repo gsraj0301/GPexp --title "v1.0.0" --notes "..."
+```
+
+The release tag points to the code commit that produced the APK. Docs-only commits can land later on `main`; the shipped binary remains pinned to the tag. Attach a SHA-256 checksum or include it in the release notes for verification.
 
 ---
 
@@ -340,7 +356,7 @@ The APK ends up at `build/apk/` relative to the project root. It's unsigned (deb
 ### Version pinning reference
 | Package | Version | Rationale |
 |---------|---------|-----------|
-| `flet` | 0.85.3 | Stable, works with Flutter 3.41.7 |
+| `flet` | 0.85.3 (pinned in `requirements.txt`) | Stable, works with Flutter 3.41.7 and the custom template |
 | `share_plus` | ^12.0.2 | Required by Flet, v7 API removed |
 | `workmanager` | ^0.9.0 | v0.5.x uses deprecated v1 embedding |
 | `sqflite` | ^2.3.3 | Latest stable |

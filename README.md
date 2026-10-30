@@ -42,14 +42,16 @@ Download [`expense_tracker.apk`](https://github.com/gsraj0301/GPexp/releases/dow
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install flet
+pip install -r requirements.txt
 python main.py
 ```
 
 ## Build APK
 
+Flet is pinned to `0.85.3` in `requirements.txt`; newer Flet releases are incompatible with the custom Android template in this repo.
+
 ```bash
-pip install flet
+pip install -r requirements.txt
 flet build apk \
   --project expense_tracker \
   --product "Expense Tracker" \
@@ -58,7 +60,7 @@ flet build apk \
   --yes
 ```
 
-GitHub Actions builds automatically on push to `main`.
+GitHub Actions builds and uploads an APK artifact on every push to `main`. Tagged releases are published manually with the tested APK attached.
 
 ## Project Structure
 
