@@ -2,6 +2,9 @@
 
 A lightweight mobile/desktop app for tracking daily expenses on a monthly basis. Built with **Flet (Python + Flutter)**, using **SQLite** for local storage. No server, no login.
 
+[![Build APK](https://github.com/gsraj0301/GPexp/actions/workflows/build-apk.yml/badge.svg?branch=main)](https://github.com/gsraj0301/GPexp/actions/workflows/build-apk.yml)
+[![Release](https://img.shields.io/github/v/release/gsraj0301/GPexp?label=release)](https://github.com/gsraj0301/GPexp/releases/latest)
+
 ## Features
 
 - Add expenses with amount, category, date
@@ -29,6 +32,10 @@ A lightweight mobile/desktop app for tracking daily expenses on a monthly basis.
 | Main Screen | History | WhatsApp Settings |
 |-------------|---------|------------------|
 | Add expenses, view list, month total | Browse all months, tap to see details | Toggle daily summary, send now |
+
+## Install on Android
+
+Download [`expense_tracker.apk`](https://github.com/gsraj0301/GPexp/releases/download/v1.0.0/expense_tracker.apk) from the [v1.0.0 release](https://github.com/gsraj0301/GPexp/releases/tag/v1.0.0), then sideload it on your Android phone. You may need to allow installation from unknown sources.
 
 ## Quick Start (Desktop)
 
